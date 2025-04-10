@@ -1,8 +1,10 @@
 #include "../include/constants.h"
+#include "../include/helper.h"
 
 #include <stdint.h>      // Fixed-width integer types
 #include <stdio.h>       // Standard I/O
 #include <stdlib.h>      // General utilities
+#include <string.h>
 #include <time.h>        // It's in your clocks
 
 int get_current_time(char *time_str,size_t buff_size)
@@ -11,34 +13,34 @@ int get_current_time(char *time_str,size_t buff_size)
   now = time(NULL);
 
   /* Format time */
-  strftime(time_str, buff_size, "%a %d %b %H:%M:%S", localtime(&now));
+  strftime(time_str, buff_size, " %a %d %b %H:%M:%S", localtime(&now));
 
   return EXIT_SUCCESS;
 }
 
-int build_json(char *time_str, char *json)
+int generate_time_date(char *time_str, char *prev_color)
 {
-  snprintf(json, LINE_BUFFER_SIZE, "{"
-         "\"name\":\"clock\","
-         "\"background\":\"%s\","
-         "\"color\":\"#000000\","
-         "\"full_text\":\" %s\""
-         "%s"
-         "}"
-         , SOLAR_BASE1, time_str, COMMON_JSON);
-
-  return EXIT_SUCCESS;
-}
-
-int generate_time_date(char *time_str)
-{
+  static char *time_color = SOLAR_BASE1;
   static char time_date[100];
 
   /* Generate the current time code */
-  get_current_time(&*time_date, sizeof(time_date));
+  if (get_current_time(&*time_date, sizeof(time_date)) == EXIT_FAILURE) {
+    goto err_fail;
+  };
 
   /* Put the formatted time code into the json */
-  build_json(time_date, &*time_str);
+  if (gen_status_json(prev_color,
+                  time_color,
+                  "timedate",
+                  "#000000",
+                  time_date,
+                  &*time_str) == EXIT_SUCCESS) {
+    strcpy(prev_color, time_color);
+  } else {
+    goto err_fail;
+  };
 
   return EXIT_SUCCESS;
+err_fail:
+  return EXIT_FAILURE;
 }

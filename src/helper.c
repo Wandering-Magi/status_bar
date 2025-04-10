@@ -16,13 +16,18 @@ int gen_seperator(char *previous_color, char *current_color, char *buffer)
   return EXIT_SUCCESS;
 }
 
-int gen_status_json(char *prev_color, char *current_color, char *name, char *font_color, char *text, char *buffer)
+int gen_status_json(char *prev_color, 
+                    char *current_color, 
+                    char *name, 
+                    char *font_color, 
+                    char *text, 
+                    char *buffer)
 {
   snprintf(buffer, LINE_BUFFER_SIZE,
            /* Build the seperator icon */
            "{"
            "\"full_text\":\"\","
-           "\"background\":\"%s\""
+           "\"background\":\"%s\","
            "\"color\":\"%s\","
            "%s"
            "},"
@@ -31,7 +36,7 @@ int gen_status_json(char *prev_color, char *current_color, char *name, char *fon
            "\"name\":\"%s\","
            "\"background\":\"%s\","
            "\"color\":\"%s\","
-           "\"full_text\":\"%s\""
+           "\"full_text\":\"%s\","
            "%s" 
            "}"
            , prev_color, current_color, COMMON_JSON

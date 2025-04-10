@@ -171,24 +171,6 @@ err_fail:
   return EXIT_FAILURE;
 }
 
-/* Assemble the json formatted string to output to the i3 status bar */
-int generate_network_json(char *rx_speed, char *tx_speed, char *network_json, char *network_color, char *previous_color)
-{
-  char seperator[LINE_BUFFER_SIZE];
-  gen_seperator(previous_color, network_color, seperator);
-
-  snprintf(network_json, LINE_BUFFER_SIZE, "%s{"
-         "\"name\":\"network\","
-         "\"background\":\"%s\","
-         "\"color\":\"#ffffff\","
-         "\"full_text\":\"   %s  %s\""
-         "%s" 
-         "}"
-         , seperator, network_color, rx_speed, tx_speed, COMMON_JSON);
-
-  return EXIT_SUCCESS;
-}
-
 /* The main networking function that calls everything else */
 int get_network_traffic(char *network_json, char *previous_color)
 {
@@ -200,12 +182,13 @@ int get_network_traffic(char *network_json, char *previous_color)
   static int rx_point = 0, tx_point = 0;
   static float rx_average, tx_average;
   static char rx_string[RT_MAX_LEN], tx_string[RT_MAX_LEN];
+  static char network_string[LINE_BUFFER_SIZE];
   static char *network_color = SOLAR_BLUE;
 
   /* Figrue out the current default network device. */
   if (find_default_network_device(device) == EXIT_FAILURE) goto err_fail;
 
-  /* A network device has bees found, get the current rx and tx values */
+  /* A network device has been found, get the current rx and tx values */
   if (get_up_down_speed(device, &rx_current, &tx_current) == EXIT_FAILURE) goto err_fail;
 
   /* Subtract the previous values from the current values */
@@ -214,20 +197,32 @@ int get_network_traffic(char *network_json, char *previous_color)
   tx_change = tx_current - tx_previous;
   tx_previous = tx_current;
   
-  /* Load change values into a circle buffer for average calculation */
+  /* Load change values into a circle buffer for future average calculation */
   if (insert_into_circle_buffer(&*rx_buffer, BUFFER_SIZE, &rx_point, &rx_change) == EXIT_FAILURE) goto err_fail;
   if (insert_into_circle_buffer(&*tx_buffer, BUFFER_SIZE, &tx_point, &tx_change) == EXIT_FAILURE) goto err_fail;
 
-  /* calculate the average speed over BUFFER_SIZE seconds */
+  /* Calculate the average speed over BUFFER_SIZE seconds */
   if (calc_average_speed(rx_buffer, BUFFER_SIZE, &rx_average) == EXIT_FAILURE) goto err_fail;
   if (calc_average_speed(tx_buffer, BUFFER_SIZE, &tx_average) == EXIT_FAILURE) goto err_fail;
 
-  /* generate a string in the format of ###.## Xbps */
+  /* Generate a string in the format of ###.## Xbps and write it into their respective buffers*/
   if (build_speed_string(&rx_average, rx_string, RT_MAX_LEN) == EXIT_FAILURE) goto err_fail;
   if (build_speed_string(&tx_average, tx_string, RT_MAX_LEN) == EXIT_FAILURE) goto err_fail;
 
-  /* build the json in order to send it to i3 system bar */
-  if (generate_network_json(rx_string, tx_string, &*network_json, network_color, previous_color) == EXIT_FAILURE) goto err_fail;
+  /* Build the full text for the network string */
+  snprintf(network_string, sizeof(network_string), "   %s  %s", rx_string, tx_string);
+
+  /* Build the json and write it into the network_json buffer */
+  if (gen_status_json(previous_color,
+                  network_color,
+                  "network_data",
+                  "#ffffff",
+                  network_string,
+                  &*network_json) == EXIT_SUCCESS) {
+    strcpy(previous_color, network_color);
+  } else {
+    goto err_fail;
+  };
   
   previous_color = network_color;
   return EXIT_SUCCESS;
